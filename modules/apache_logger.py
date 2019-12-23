@@ -34,7 +34,7 @@ class ApacheLogger:
     def create_dataframe(self, file):
         df = None
         # chunksizeを用いてメモリに載らないファイルでも分割して読み込む
-        reader = pd.read_table(file, header=None, chunksize=1000)
+        reader = pd.read_table(file, header=None, chunksize=100000)
         for r in reader:
             if df is None:
                 df = r
@@ -56,7 +56,7 @@ class ApacheLogger:
         for date in date_list:
             print(date)
             date_formated = self.convert_string_to_date(date)
-            target_date = self.get_access_limited_date(date_formated)
+            target_date = self.get_access_limited_date(date_formated, 'datetime')
             # 指定した日付のログがなければ終了
             if not target_date:
                 errors.not_exit_log()
@@ -65,32 +65,64 @@ class ApacheLogger:
             access_dict = self.get_access_count_per_hour(target_date)
             for hour, count in access_dict.items():
                 print('{}時: {}回'.format(hour, count))
+            print('合計: {}回'.format(sum(access_dict.values())))
             print('\n')
 
-    def show_access_count_per_host(self):
-        print('接続してきたホスト名をアクセス数順に表示します')
-        remote_hosts = self.get_remote_hosts()
-        c = collections.Counter(remote_hosts)
-        for name, count in c.most_common():
-            print('ホスト名: {}, 接続回数: {}'.format(name, count))
+    def show_access_count_per_host(self, date_str):
+        print('接続してきたホスト名をアクセス数順に表示します\n')
+
+        date_list = []
+        # ハイフンがある時は期間指定なので分割して補完する
+        if '-' in date_str:
+            date_list.extend(self.get_complemented_dates(date_str))
+        else:
+            date_list.append(date_str)
+
+        for date in date_list:
+            print(date)
+            date_formated = self.convert_string_to_date(date)
+            remote_host = self.get_access_limited_date(date_formated, 'remote_host')
+
+            # 指定した日付のログがなければ終了
+            if not remote_host:
+                errors.not_exit_log()
+                continue
+
+            c = collections.Counter(remote_host)
+            for name, count in c.most_common():
+                print('ホスト名: {}, 接続回数: {}'.format(name, count))
+            print('\n')
 
     # 指定した日付のアクセス時間を取得する
-    def get_access_limited_date(self, date):
+    def get_access_limited_date(self, date, _type):
         year = str(date.year)
         # apacheの月は英語3文字になっているので変換する
         month = self.MONTH[int(date.month)]
         day = str(date.day)
 
-        target_date_list = []
+        pattern = None
+        if _type == 'remote_host':
+            ip_address = r'(([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}' \
+                         r'([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])'
+            # ipアドレスがない時は-になる
+            pattern = r'^(' + ip_address + r'|\s*-\s*){3}'
+
+        elif _type == 'datetime':
+            pattern = r'\[' + day + r'\/' + month + r'\/' + year + r'(:[0-9]{2}){3}.*\]'
+
+        else:
+            errors.not_exist_type()
+
+        target_list = []
         for data in self.datas:
             # 実例 [16/Dec/2019:02:02:49 -0500]
-            pattern = r'\[' + day + r'\/' + month + r'\/' + year + r'(:[0-9]{2}){3}.*\]'
+            # pattern = r'\[' + day + r'\/' + month + r'\/' + year + r'(:[0-9]{2}){3}.*\]'
             repeater = re.compile(pattern)
             result = repeater.search(data)
             if result:
-                target_date_list.append(result.group().split()[0])
+                target_list.append(result.group().split()[0])
 
-        return target_date_list
+        return target_list
 
     # 24時間毎のアクセス回数を辞書型配列で返す
     def get_access_count_per_hour(self, _list):
@@ -102,23 +134,6 @@ class ApacheLogger:
             hour_dict[hour] += 1
 
         return hour_dict
-
-    # アクセスしてきたホスト名を配列で返す(重複あり)
-    def get_remote_hosts(self):
-        remote_hosts_list = []
-
-        for data in self.datas:
-            ip_address = r'(([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}' \
-                         r'([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])'
-            # ipアドレスがない時は-になる
-            pattern = r'^(' + ip_address + r'|\s*-\s*){3}'
-            repeater = re.compile(pattern)
-            result = repeater.search(data)
-            if result:
-                # 3つうち一番左がアクセスしてきたホスト名なのでそのipアドレスのみ取得する
-                remote_hosts_list.append(result.group().split()[0])
-
-        return remote_hosts_list
 
     def get_complemented_dates(self, dates):
         date_list = []
