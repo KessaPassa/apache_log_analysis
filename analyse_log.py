@@ -16,6 +16,6 @@ if __name__ == '__main__':
     for argv in sys.argv:
         print(argv)
 
-    logger = ApacheLogger(DIR_PATH, EXTENTION)
-    logger.show_access_count_per_hour('2019/12/13-2019/12/18')
-    # logger.show_access_count_per_host('2019/12/15-2019/12/17')
+    logger = ApacheLogger(DIR_PATH, EXTENTION, CHUNKSIZE)
+    # logger.show_hour_count('2019/12/13-2019/12/17')
+    logger.show_host_count('2019/12/13-2019/12/18')
