@@ -15,6 +15,17 @@ EXTENTION = os.getenv('extention', '*.log')
 CHUNKSIZE = os.getenv('chunksize', 100000)
 
 
+# オプションが--helpか引数がたりない時に表示する
+def show_help():
+    print('Usage:\n'
+          '    python analyse.py [option] [term] [dir_name or file_name]\n'
+          '\n'
+          'Commands:\n'
+          '    -h    1時間毎のアクセス数を表示します\n'
+          '    -r    アクセスが多い順にリモートホスト名を表示します\n')
+    exit()
+
+
 # 引数を調整する
 def ajust_argv(argv):
     option = None
@@ -22,12 +33,14 @@ def ajust_argv(argv):
     dir_path = None
     extention = None
 
-    # どの関数を実行するかのオプションを取得
+    # 引数がたりない時はヘルプ出す
+    if len(argv) <= 2:
+        show_help()
+
     if (len(argv) > 1) and ('-' in argv[1]):
+        # ヘルプ出して終了
         if argv[1] == '--help':
-            option = argv[1]
-            # termがNoneのままだとエラーが出るので
-            term = ''
+            show_help()
 
         pattern = r'^-[a-z]$'
         repeater = re.compile(pattern)
@@ -64,16 +77,8 @@ def switch_process(option, term, dir_path, extention):
 
     logger = ApacheLogger(dir_path, extention, CHUNKSIZE)
 
-    if option == '--help':
-        print('Usage:\n'
-              'python analyse_log.py [option] [term] [dir_name or file_name]\n'
-              '\n'
-              'Commands:\n'
-              '-h    1時間毎のアクセス数を表示します\n'
-              '-r    アクセスが多い順にリモートホスト名を表示します\n')
-
     # １時間毎のアクセス数を表示
-    elif option == '-h':
+    if option == '-h':
         logger.show_hour_count(term)
     # アクセスの多いホスト順に一覧表示
     elif option == '-r':
