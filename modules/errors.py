@@ -1,4 +1,19 @@
-def not_exit_log():
+def not_enough_argv():
+    print('日付を入力してください。引数がたりません')
+    exit()
+
+
+def wrong_option():
+    print('オプション引数が違います')
+    exit()
+
+
+def not_exist_file():
+    print('ファイルが存在しないパスです')
+    exit()
+
+
+def not_exist_log():
     print('指定した日付のログは存在しません')
     exit()
 

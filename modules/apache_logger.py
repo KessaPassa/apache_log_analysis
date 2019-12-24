@@ -17,7 +17,10 @@ class ApacheLogger:
     def read_files(self, dir_path, extention, chunksize):
         datas = pd.DataFrame()
         # EXTENTIONに指定した拡張子全てを読み込む
-        files = glob.glob(dir_path + '/*' + extention)
+        files = glob.glob(dir_path + '/' + extention)
+        # 存在しないパスならエラー吐いて終了
+        if not files:
+            errors.not_exist_file()
 
         # 複数読み込み対応
         for file in files:
@@ -93,7 +96,7 @@ class ApacheLogger:
 
         # 指定した日付のログがなければ終了
         if is_empty:
-            errors.not_exit_log()
+            errors.not_exist_log()
 
         return target_list
 
